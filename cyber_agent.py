@@ -15,14 +15,32 @@ if not api_key:
 # Gemini API config
 genai.configure(api_key=api_key)
 
+
+# Custom function for domain check
+def check_server_status(domain: str) -> str:
+    """
+    Checks the server status and open ports for the provided domain or IP address.
+    """
+    print(f"\n[🔧 AI Tool active: Checking {domain} ...]")
+
+    # first check dummy domain address
+    if "google.com" in domain.lower():
+        return f"The server for {domain} is online. Available ports: 80, 443"
+    else:
+        return f"The server for {domain} is online. Available ports: 80"
+
+
 # Agent create, Given system instruction with proper prompt
 agent_instructions = """Your name is 'Cyber_Tech'. You are an expert with 15 years of experience in Cybersecurity and Networking.
 You should only answer questions related to Networking, DevOps, cloud and Cybersecurity.
-If someone asks about any other topic, please state very politely that you are not knowledgeable about that subject and that you can only assist with technical issues."""
+If someone asks about any other topic, please state very politely that you are not knowledgeable about that subject and that you can only assist with technical issues.
+If someone asks about the status (status/ports) of a website or an ip address, you must use the provided 'check_server_status' tool to provide an answer."""
 
 # Buildup the model
 model = genai.GenerativeModel(
-    model_name="gemini-3.5-flash-lite", system_instruction=agent_instructions
+    model_name="gemini-3.5-flash-lite",
+    system_instruction=agent_instructions,
+    tools=[check_server_status],
 )
 
 # Start chat with agent
@@ -32,7 +50,8 @@ print(
 print("-" * 50)
 
 # Object for store the chat
-chat = model.start_chat(history=[])
+# Enable automatic function calling
+chat = model.start_chat(enable_automatic_function_calling=True, history=[])
 
 while True:
     user_input = input("\n 👤 You: ")
