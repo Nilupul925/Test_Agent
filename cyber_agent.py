@@ -1,4 +1,5 @@
 import os
+import socket
 import sys
 
 import google.generativeai as genai
@@ -17,30 +18,52 @@ genai.configure(api_key=api_key)
 
 
 # Custom function for domain check
-def check_server_status(domain: str) -> str:
+def run_port_scanner(target_ip_or_domain: str) -> str:
     """
-    Checks the server status and open ports for the provided domain or IP address.
+    It checks the open ports on the provided target IP address and domain.
     """
-    print(f"\n[🔧 AI Tool active: Checking {domain} ...]")
+    print(f"\n[🔧 AI Tool active: Scanning {target_ip_or_domain}, Please wait...]")
 
-    # first check dummy domain address
-    if "google.com" in domain.lower():
-        return f"The server for {domain} is online. Available ports: 80, 443"
+    # Scanning ports
+    ports_to_scan = [21, 22, 80, 443, 8080, 3306]
+    open_ports = []
+
+    try:
+        # convert domain name into it's IP address
+        target_ip = socket.gethostbyname(target_ip_or_domain)
+    except socket.gaierror:
+        return f"Error: Can't convet {target_ip_or_domain} into an IP address."
+
+    # Chech each port
+    for port in ports_to_scan:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)  # for speedly time out
+        result = sock.connect_ex((target_ip, port))
+
+        if result == 0:
+            open_ports.append(str(port))
+
+        sock.close()
+
+    # Pass result to Agent
+    if open_ports:
+        return f"Scan successful. Open ports on {target_ip_or_domain} ({target_ip}) : {','.join(open_ports)}"
     else:
-        return f"The server for {domain} is online. Available ports: 80"
+        return f"Scan complete. None of the ports checked on {target_ip_or_domain} ({target_ip}) are open."
 
 
 # Agent create, Given system instruction with proper prompt
 agent_instructions = """Your name is 'Cyber_Tech'. You are an expert with 15 years of experience in Cybersecurity and Networking.
 You should only answer questions related to Networking, DevOps, cloud and Cybersecurity.
 If someone asks about any other topic, please state very politely that you are not knowledgeable about that subject and that you can only assist with technical issues.
-If someone asks about the status (status/ports) of a website or an ip address, you must use the provided 'check_server_status' tool to provide an answer."""
+If you are asked to check (scan) the status of a website or an IP address, or to examine its ports, you must use the provided 'run_port_scanner' tool to obtain the actual information.
+please ensuring your response is clear and professional."""
 
 # Buildup the model
 model = genai.GenerativeModel(
     model_name="gemini-3.5-flash-lite",
     system_instruction=agent_instructions,
-    tools=[check_server_status],
+    tools=[run_port_scanner],
 )
 
 # Start chat with agent
