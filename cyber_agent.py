@@ -76,9 +76,13 @@ model = genai.GenerativeModel(
 )
 
 # AI chat object
-st.session_state.chat_session = model.start_chat(enable_automatic_function_calling=True)
+if "chat_session" not in st.session_state:
+    st.session_state.chat_session = model.start_chat(
+        enable_automatic_function_calling=True
+    )
 # list of chats that show in UI
-st.session_state.messages = []
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 # Show old chat in UI
 for msg in st.session_state.messages:
@@ -92,16 +96,16 @@ if user_prompt := st.chat_input("Submit an IP-related or technical issue."):
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
-# Assistant's reply with loading animation
-with st.chat_message("assistant"):
-    with st.spinner("Cyber_Tech is thinking/ scanning... 🔍"):
-        try:
-            response = st.session_state.chat_session.send_message(user_prompt)
-            st.markdown(response.text)
+    # Assistant's reply with loading animation
+    with st.chat_message("assistant"):
+        with st.spinner("Cyber_Tech is thinking/ scanning... 🔍"):
+            try:
+                response = st.session_state.chat_session.send_message(user_prompt)
+                st.markdown(response.text)
 
-            # add the memory of assistant
-            st.session_state.messages.append(
-                {"role": "assistant", "content": response.text}
-            )
-        except Exception as e:
-            st.error(f"Error occur: {e}")
+                # add the memory of assistant
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": response.text}
+                )
+            except Exception as e:
+                st.error(f"Error occur: {e}")
