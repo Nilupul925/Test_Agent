@@ -1,17 +1,27 @@
 import os
 import socket
-import sys
 
 import google.generativeai as genai
+import streamlit as st
 from dotenv import load_dotenv
+
+# Page config
+st.set_page_config(
+    page_title="Cyber_Tech AI Dashboard", page_icon="🛡️", layout="centered"
+)
+st.title("🌐 Cyber_Tech - AI Security Agent")
+st.caption(
+    "Your AI assistant for resolving Cybersecurity and Networking issues, and for performing port scans."
+)
+st.divider()
 
 # API key call
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    print("Error: API key can't find")
-    sys.exit()
+    st.error("Error: API key can't find")
+    st.stop()
 
 # Gemini API config
 genai.configure(api_key=api_key)
@@ -22,7 +32,6 @@ def run_port_scanner(target_ip_or_domain: str) -> str:
     """
     It checks the open ports on the provided target IP address and domain.
     """
-    print(f"\n[🔧 AI Tool active: Scanning {target_ip_or_domain}, Please wait...]")
 
     # Scanning ports
     ports_to_scan = [21, 22, 80, 443, 8080, 3306]
@@ -66,28 +75,33 @@ model = genai.GenerativeModel(
     tools=[run_port_scanner],
 )
 
-# Start chat with agent
-print(
-    "🤖 Hello! I am Cyber_Tech. Ask your Networking and Security questions. (Type 'exit' to leave)"
-)
-print("-" * 50)
+# AI chat object
+st.session_state.chat_session = model.start_chat(enable_automatic_function_calling=True)
+# list of chats that show in UI
+st.session_state.messages = []
 
-# Object for store the chat
-# Enable automatic function calling
-chat = model.start_chat(enable_automatic_function_calling=True, history=[])
+# Show old chat in UI
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-while True:
-    user_input = input("\n 👤 You: ")
+# getting user input and reply
+if user_prompt := st.chat_input("Submit an IP-related or technical issue."):
+    # Show user input on UI and store them
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    with st.chat_message("user"):
+        st.markdown(user_prompt)
 
-    if user_input.lower() == "exit":
-        print("\n🤖 Cyber_Tech : Thank you! Good Bye...")
-        break
-    if not user_input.strip():
-        continue
+# Assistant's reply with loading animation
+with st.chat_message("assistant"):
+    with st.spinner("Cyber_Tech is thinking/ scanning... 🔍"):
+        try:
+            response = st.session_state.chat_session.send_message(user_prompt)
+            st.markdown(response.text)
 
-    try:
-        # Get an answer from the agent
-        response = chat.send_message(user_input)
-        print(f"\n🤖 Cyber_Tech : {response.text}")
-    except Exception as e:
-        print(f"\n Error occur : {e}")
+            # add the memory of assistant
+            st.session_state.messages.append(
+                {"role": "assistant", "content": response.text}
+            )
+        except Exception as e:
+            st.error(f"Error occur: {e}")
